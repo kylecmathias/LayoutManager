@@ -17,7 +17,7 @@ TabLayout::~TabLayout() {
     deleteAllTabs();
 }
 
-Code TabLayout::addTab(Layout* tab, Adafruit_GFX_Button* button, const char* label, uint16_t outline, uint16_t fill, uint16_t text, uint8_t textSize) {
+Code TabLayout::addTab(Layout* tab, TouchButton* button, const char* label) {
     if (tabCount >= MAX_TABS || !tab || !button) return FAIL;
 
     tabs[tabCount] = tab;
@@ -30,8 +30,8 @@ Code TabLayout::addTab(Layout* tab, Adafruit_GFX_Button* button, const char* lab
 
     for (uint8_t i = 0; i < tabCount; i++) {
         int16_t btnX = startX + (i * btnW);
-        buttons[i]->initButtonUL(&tft, btnX, startY, btnW, tabBarHeight, outline, fill, text, (char*)labels[i], textSize);
-        buttons[i]->drawButton(i == currentTab);
+        buttons[i]->setBounds(btnX, startY, btnW, tabBarHeight);
+        buttons[i]->draw();
     }
     return SUCCESS;
 }
@@ -53,7 +53,7 @@ Code TabLayout::createTab(TabContentLayout layout, const char* label, uint16_t o
             return FAIL;
     }
 
-    Adafruit_GFX_Button* button = new Adafruit_GFX_Button();
+    TouchButton* button = new TouchButton(&tft, outline, fill, text, label, textSize);
     if (!button) {
         delete tabs[tabCount];
         tabs[tabCount] = nullptr;
@@ -68,8 +68,8 @@ Code TabLayout::createTab(TabContentLayout layout, const char* label, uint16_t o
     int16_t btnW = tabW / tabCount; 
     for (uint8_t i = 0; i < tabCount; i++) {
         int16_t btnX = startX + (i * btnW);
-        buttons[i]->initButtonUL(&tft, btnX, startY, btnW, tabBarHeight, outline, fill, text, (char*)labels[i], textSize);
-        buttons[i]->drawButton(i == currentTab);
+        buttons[i]->setBounds(btnX, startY, btnW, tabBarHeight);
+        buttons[i]->draw();
     }
 
     return SUCCESS;
@@ -78,7 +78,7 @@ Code TabLayout::createTab(TabContentLayout layout, const char* label, uint16_t o
 void TabLayout::drawAll() {
     for (uint8_t i = 0; i < tabCount; i++) {
         if (buttons[i]) {
-            buttons[i]->drawButton(i == currentTab); 
+            buttons[i]->draw(); 
         }
     }
 
@@ -96,7 +96,7 @@ Dimensions TabLayout::getTabDimensions(uint16_t tol) {
     return dims;
 }
 
-Adafruit_GFX_Button* TabLayout::getPressed(TSPoint p) {
+TouchButton* TabLayout::getPressed(TSPoint p) {
     if (p.z < config.MINPRESSURE || p.z > config.MAXPRESSURE) return nullptr;
 
     int16_t x = map(p.x, config.TS_LEFT, config.TS_RT, 0, tft.width());
@@ -155,8 +155,8 @@ Code TabLayout::deleteTab(uint8_t index) {
     int16_t btnW = tabW / (tabCount > 0 ? tabCount : 1); 
     for (uint8_t i = 0; i < tabCount; i++) {
         int16_t btnX = startX + (i * btnW);
-        buttons[i]->initButtonUL(&tft, btnX, startY, btnW, tabBarHeight, WHITE, BLACK, WHITE, (char*)labels[i], 2);
-        buttons[i]->drawButton(i == currentTab);
+        buttons[i]->setBounds(btnX, startY, btnW, tabBarHeight);
+        buttons[i]->draw();
     }
 
     setBg(bg); 

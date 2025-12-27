@@ -8,7 +8,7 @@ using ButtonCallback = void(*)(uint8_t row, uint8_t col);
 
 class GridLayout : public Layout {
 private:
-    Adafruit_GFX_Button* grid[MAX_ROWS][MAX_COLS] = {}; 
+    UIComponent* grid[MAX_ROWS][MAX_COLS] = {}; 
     bool owned[MAX_ROWS][MAX_COLS] = {};
     ButtonCallback callbacks[MAX_ROWS][MAX_COLS] = {};
     uint8_t rows = 0;
@@ -23,33 +23,35 @@ public:
 
     //sets default background color
     void setBg(uint16_t color) override;
-    //sets buttons in all cells
+    //sets components in all cells
     void drawAll() override;
-    //adds existing button to layout (external ownership)
-    Code addButton(Adafruit_GFX_Button* button, uint8_t row, uint8_t col, uint16_t tol, const char* label = "", uint16_t outline = WHITE, uint16_t fill = BLUE, uint16_t text = BLACK, uint8_t textSize = 2);
-    //creates a button owned by the layout
-    Code createButton(uint8_t row, uint8_t col, uint16_t tol, const char* label = "", uint16_t outline = WHITE, uint16_t fill = BLUE, uint16_t text = BLACK, uint8_t textSize = 2);
+    //adds existing component to layout (external ownership)
+    Code addComponent(UIComponent* component, uint8_t row, uint8_t col, uint16_t tol, const char* label = "", uint16_t outline = WHITE, uint16_t fill = BLUE, uint16_t text = BLACK, uint8_t textSize = 2);
+    //creates a component owned by the layout
+    Code createComponent(Components component, uint8_t row, uint8_t col, uint16_t tol, const char* label = "", uint16_t outline = WHITE, uint16_t fill = BLUE, uint16_t text = BLACK, uint8_t textSize = 2);
     //adds callback function for button press
-    void setCallback(uint8_t row, uint8_t col, ButtonCallback cb);
+    void setButtonCallback(uint8_t row, uint8_t col, ButtonCallback cb);
     //clears callback
-    void clearCallback(uint8_t row, uint8_t col);
+    void clearButtonCallback(uint8_t row, uint8_t col);
     //gets cell dimensions as a struct
     Dimensions getCellDimensions(uint8_t row, uint8_t col, uint16_t tol);
 
 
     //usage functions
 
-    //gets the reference to the button at row and column
-    Adafruit_GFX_Button* getButton(uint8_t row, uint8_t col);
-    Adafruit_GFX_Button* getPressed(TSPoint p, int8_t* outRow, int8_t* outCol);
-    Adafruit_GFX_Button* getPressed(TSPoint p) override;
+    //gets the reference to the component at row and column
+    UIComponent* getComponent(uint8_t row, uint8_t col);
+    //checks to see if a button at a cell is pressed, returns pointer to button if so, else nullptr
+    TouchButton* getPressed(TSPoint p, int8_t* outRow, int8_t* outCol);
+    //returns the first pressed button otherwise returns nullptr
+    TouchButton* getPressed(TSPoint p) override;
 
 
     //cleanup methods
 
-    //delete button at row and column
-    Code deleteButton(uint8_t row, uint8_t col);
-    //delete all buttons
+    //delete component at row and column
+    Code deleteComponent(uint8_t row, uint8_t col);
+    //delete all components
     Code deleteAll();
 };
 

@@ -2,6 +2,7 @@
 #define LAYOUT_H
 
 #include "touchscreen_config.h"
+#include "Component.h"
 
 class Layout {
 protected:
@@ -15,7 +16,7 @@ public:
     virtual ~Layout() {}
 
     virtual void drawAll() = 0;
-    virtual Adafruit_GFX_Button* getPressed(TSPoint p) = 0;
+    virtual TouchButton* getPressed(TSPoint p) = 0;
 
     // This can be shared by everyone
     virtual void setBg(uint16_t color) {

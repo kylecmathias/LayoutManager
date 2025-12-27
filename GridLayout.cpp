@@ -16,16 +16,17 @@ void GridLayout::setBg(uint16_t color) {
 }
 
 void GridLayout::drawAll() {
+    tft.fillRect(startX, startY, layoutW, layoutH, bg); 
     for (uint8_t r = 0; r < rows; r++) {
         for (uint8_t c = 0; c < cols; c++) {
-            if (grid[r][c]) {
-                grid[r][c]->drawButton(false);
+            if (grid[r][c] != nullptr) {
+                grid[r][c]->draw();
             }
         }
     }
 }
 
-Code GridLayout::addButton(Adafruit_GFX_Button* button, uint8_t row, uint8_t col, uint16_t tol, const char* label = "", uint16_t outline = WHITE, uint16_t fill = BLUE, uint16_t text = BLACK, uint8_t textSize = 2) {
+Code GridLayout::addComponent(UIComponent* component, uint8_t row, uint8_t col, uint16_t tol, const char* label = "", uint16_t outline = WHITE, uint16_t fill = BLUE, uint16_t text = BLACK, uint8_t textSize = 2) {
     if (row >= rows || col >= cols) return FAIL;
     if (grid[row][col] != nullptr) return FAIL;
 
@@ -43,16 +44,16 @@ Code GridLayout::addButton(Adafruit_GFX_Button* button, uint8_t row, uint8_t col
         return FAIL;
     }
 
-    grid[row][col] = button;
+    grid[row][col] = component;
     owned[row][col] = false;
 
-    button->initButtonUL(&tft, x, y, b_w, b_h, outline, fill, text, (char*)label, textSize);
-    grid[row][col]->drawButton(false);
+    component->setBounds(x, y, b_w, b_h);
+    grid[row][col]->draw();
 
     return SUCCESS;
 }
 
-Code GridLayout::createButton(uint8_t row, uint8_t col, uint16_t tol, const char* label = "", uint16_t outline = WHITE, uint16_t fill = BLUE, uint16_t text = BLACK, uint8_t textSize = 2) {
+Code GridLayout::createComponent(Components component, uint8_t row, uint8_t col, uint16_t tol, const char* label = "", uint16_t outline = WHITE, uint16_t fill = BLUE, uint16_t text = BLACK, uint8_t textSize = 2) {
     if (row >= rows || col >= cols) return FAIL;
     if (grid[row][col] != nullptr) return FAIL;
 
@@ -66,22 +67,32 @@ Code GridLayout::createButton(uint8_t row, uint8_t col, uint16_t tol, const char
 
     if (b_w <= 0 || b_h <= 0) return FAIL;
 
-    grid[row][col] = new Adafruit_GFX_Button();
+    switch (component) {
+        case Components::TOUCHBUTTON:
+            grid[row][col] = new TouchButton(&tft, outline, fill, text, label, textSize);
+            break;
+        case Components::LABEL:
+            grid[row][col] = new Label(&tft, label, text, textSize);
+            break;
+        default:
+            return FAIL;
+    }
+
     if (!grid[row][col]) return FAIL;
     owned[row][col] = true;
 
-    grid[row][col]->initButtonUL(&tft, x, y, b_w, b_h, outline, fill, text, (char*)label, textSize);
-    grid[row][col]->drawButton(false);
+    grid[row][col]->setBounds(x, y, b_w, b_h);
+    grid[row][col]->draw();
 
     return SUCCESS;
 }
 
-void GridLayout::setCallback(uint8_t row, uint8_t col, ButtonCallback cb) {
+void GridLayout::setButtonCallback(uint8_t row, uint8_t col, ButtonCallback cb) {
     if (row >= rows || col >= cols) return;
     callbacks[row][col] = cb; 
 }
 
-void GridLayout::clearCallback(uint8_t row, uint8_t col) {
+void GridLayout::clearButtonCallback(uint8_t row, uint8_t col) {
     if (row >= rows || col >= cols) return;
     callbacks[row][col] = nullptr; 
 }
@@ -102,28 +113,28 @@ Dimensions GridLayout::getCellDimensions(uint8_t row, uint8_t col, uint16_t tol)
     return dims;
 }
 
-Adafruit_GFX_Button* GridLayout::getButton(uint8_t row, uint8_t col) {
+UIComponent* GridLayout::getComponent(uint8_t row, uint8_t col) {
     if (row >= rows || col >= cols) return nullptr;
     return grid[row][col];
 }
 
-Adafruit_GFX_Button* GridLayout::getPressed(TSPoint p, int8_t* outRow, int8_t* outCol) {
+TouchButton* GridLayout::getPressed(TSPoint p, int8_t* outRow, int8_t* outCol) {
     if (p.z < config.MINPRESSURE || p.z > config.MAXPRESSURE) return nullptr;
 
     int16_t x = map(p.x, config.TS_LEFT, config.TS_RT, 0, tft.width());
     int16_t y = map(p.y, config.TS_TOP, config.TS_BOT, 0, tft.height());
 
-    if (x < startX || x > startX + layoutW || 
-        y < startY || y > startY + layoutH) {
+    if (x < startX || x > startX + layoutW || y < startY || y > startY + layoutH) {
         return nullptr; 
     }
 
-    Adafruit_GFX_Button* pressedBtn = nullptr;
+    TouchButton* pressedBtn = nullptr;
 
     for (uint8_t r = 0; r < rows; r++) {
         for (uint8_t c = 0; c < cols; c++) {
-            Adafruit_GFX_Button* btn = grid[r][c];
-            if (!btn) continue;
+            if (!grid[r][c]) continue;
+            if (!(grid[r][c]->getComponentType() == Components::TOUCHBUTTON)) continue;
+            TouchButton* btn = static_cast<TouchButton*>(grid[r][c]);
 
             btn->press(btn->contains(x, y));
 
@@ -142,18 +153,23 @@ Adafruit_GFX_Button* GridLayout::getPressed(TSPoint p, int8_t* outRow, int8_t* o
     return pressedBtn;
 }
 
-Adafruit_GFX_Button* GridLayout::getPressed(TSPoint p) {
+TouchButton* GridLayout::getPressed(TSPoint p) {
     if (p.z < config.MINPRESSURE || p.z > config.MAXPRESSURE) return nullptr;
 
     int16_t x = map(p.x, config.TS_LEFT, config.TS_RT, 0, tft.width());
     int16_t y = map(p.y, config.TS_TOP, config.TS_BOT, 0, tft.height());
 
-    Adafruit_GFX_Button* pressedBtn = nullptr;
+    if (x < startX || x > startX + layoutW || y < startY || y > startY + layoutH) {
+        return nullptr; 
+    }
+
+    TouchButton* pressedBtn = nullptr;
 
     for (uint8_t r = 0; r < rows; r++) {
         for (uint8_t c = 0; c < cols; c++) {
-            Adafruit_GFX_Button* btn = grid[r][c];
-            if (!btn) continue;
+            if (!grid[r][c]) continue;
+            if (!(grid[r][c]->getComponentType() == Components::TOUCHBUTTON)) continue;
+            TouchButton* btn = static_cast<TouchButton*>(grid[r][c]);
 
             btn->press(btn->contains(x, y));
 
@@ -171,7 +187,7 @@ Adafruit_GFX_Button* GridLayout::getPressed(TSPoint p) {
     return pressedBtn;
 }
 
-Code GridLayout::deleteButton(uint8_t row, uint8_t col) {
+Code GridLayout::deleteComponent(uint8_t row, uint8_t col) {
     if (row >= rows || col >= cols) return FAIL;
     if (grid[row][col] == nullptr) return FAIL;
 
@@ -193,7 +209,7 @@ Code GridLayout::deleteButton(uint8_t row, uint8_t col) {
 Code GridLayout::deleteAll() {
     for (int r = 0; r < rows; r++) {
         for (int c = 0; c < cols; c++) {
-            deleteButton(r, c);
+            deleteComponent(r, c);
         }
     }
     return SUCCESS;
